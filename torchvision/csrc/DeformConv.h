@@ -13,6 +13,7 @@ at::Tensor DeformConv2d_forward(
     const at::Tensor& input,
     const at::Tensor& weight,
     const at::Tensor& offset,
+    const at::Tensor& mask,
     const at::Tensor& bias,
     const std::pair<int, int>& stride,
     const std::pair<int, int>& padding,
@@ -25,6 +26,7 @@ at::Tensor DeformConv2d_forward(
         input.contiguous(),
         weight.contiguous(),
         offset.contiguous(),
+        mask.contiguous(),
         bias.contiguous(),
         stride,
         padding,
@@ -39,6 +41,7 @@ at::Tensor DeformConv2d_forward(
       input.contiguous(),
       weight.contiguous(),
       offset.contiguous(),
+      mask.contiguous(),
       bias.contiguous(),
       stride,
       padding,
@@ -47,11 +50,13 @@ at::Tensor DeformConv2d_forward(
       offset_groups);
 }
 
-std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> DeformConv2d_backward(
+std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor, at::Tensor>
+DeformConv2d_backward(
     const at::Tensor& grad,
     const at::Tensor& input,
     const at::Tensor& weight,
     const at::Tensor& offset,
+    const at::Tensor& mask,
     const at::Tensor& bias,
     const std::pair<int, int>& stride,
     const std::pair<int, int>& padding,
@@ -65,6 +70,7 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> DeformConv2d_backward
         input.contiguous(),
         weight.contiguous(),
         offset.contiguous(),
+        mask.contiguous(),
         bias.contiguous(),
         stride,
         padding,
@@ -80,6 +86,7 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor> DeformConv2d_backward
       input.contiguous(),
       weight.contiguous(),
       offset.contiguous(),
+      mask.contiguous(),
       bias.contiguous(),
       stride,
       padding,
@@ -96,6 +103,7 @@ class DeformConv2dFunction
       torch::autograd::Variable input,
       torch::autograd::Variable weight,
       torch::autograd::Variable offset,
+      torch::autograd::Variable mask,
       torch::autograd::Variable bias,
       int64_t stride_h,
       int64_t stride_w,
@@ -109,6 +117,7 @@ class DeformConv2dFunction
         input,
         weight,
         offset,
+        mask,
         bias,
         {stride_h, stride_w},
         {pad_h, pad_w},
@@ -116,7 +125,7 @@ class DeformConv2dFunction
         groups,
         offset_groups);
 
-    ctx->save_for_backward({input, weight, offset, bias});
+    ctx->save_for_backward({input, weight, offset, mask, bias});
     ctx->saved_data["stride_h"] = stride_h;
     ctx->saved_data["stride_w"] = stride_w;
     ctx->saved_data["pad_h"] = pad_h;
@@ -138,7 +147,8 @@ class DeformConv2dFunction
     auto input = saved[0];
     auto weight = saved[1];
     auto offset = saved[2];
-    auto bias = saved[3];
+    auto mask = saved[3];
+    auto bias = saved[4];
 
     auto stride_h = ctx->saved_data["stride_h"].toInt();
     auto stride_w = ctx->saved_data["stride_w"].toInt();
@@ -154,6 +164,7 @@ class DeformConv2dFunction
         input,
         weight,
         offset,
+        mask,
         bias,
         {stride_h, stride_w},
         {pad_h, pad_w},
@@ -163,12 +174,14 @@ class DeformConv2dFunction
     auto grad_input = std::get<0>(grads);
     auto grad_weight = std::get<1>(grads);
     auto grad_offset = std::get<2>(grads);
-    auto grad_bias = std::get<3>(grads);
+    auto grad_mask = std::get<3>(grads);
+    auto grad_bias = std::get<4>(grads);
 
     return {
         grad_input,
         grad_weight,
         grad_offset,
+        grad_mask,
         grad_bias,
         torch::autograd::Variable(),
         torch::autograd::Variable(),
@@ -186,6 +199,7 @@ at::Tensor deform_conv2d(
     const at::Tensor& input,
     const at::Tensor& weight,
     const at::Tensor& offset,
+    const at::Tensor& mask,
     const at::Tensor& bias,
     int64_t stride_h,
     int64_t stride_w,
@@ -199,6 +213,7 @@ at::Tensor deform_conv2d(
       input,
       weight,
       offset,
+      mask,
       bias,
       stride_h,
       stride_w,
