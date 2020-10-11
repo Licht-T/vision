@@ -60,7 +60,9 @@ def deform_conv2d(
     _assert_has_ops()
     out_channels = weight.shape[0]
 
-    if mask is None:
+    use_mask = mask is not None
+
+    if not use_mask:
         mask = torch.zeros((input.shape[0], 0), device=input.device, dtype=input.dtype)
 
     if bias is None:
@@ -87,7 +89,7 @@ def deform_conv2d(
     mask_h = offset.shape[2]
     mask_w = offset.shape[3]
 
-    if mask.numel() != 0 and (
+    if use_mask and (
             mask.shape[0] != n_batches
             or mask.shape[1] != mask_ch
             or mask.shape[2] != mask_h
