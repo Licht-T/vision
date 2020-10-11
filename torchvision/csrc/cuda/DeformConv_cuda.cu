@@ -873,11 +873,11 @@ deform_conv_backward_input_cuda(
   auto grad_input = at::zeros_like(input);
   auto grad_offset = at::zeros_like(offset);
   auto grad_mask = at::zeros_like(mask);
-  
+
   if (batch_sz == 0) {
     return std::make_tuple(grad_input, grad_offset, grad_mask);
   }
-  
+
   auto columns = at::empty(
       {n_in_channels * weight_w * weight_h, n_parallel_imgs * out_h * out_w},
       input.options());
