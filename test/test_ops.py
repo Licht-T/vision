@@ -483,8 +483,7 @@ class DeformConvTester(OpTester, unittest.TestCase):
         out += bias.view(1, n_out_channels, 1, 1)
         return out
 
-    def get_fn_args(self, device, contiguous):
-        batch_sz = 33
+    def get_fn_args(self, device, contiguous, batch_sz):
         n_in_channels = 6
         n_out_channels = 2
         n_weight_grps = 2
@@ -525,7 +524,11 @@ class DeformConvTester(OpTester, unittest.TestCase):
         return x, weight, offset, mask, bias, stride, pad, dilation
 
     def _test_forward(self, device, contiguous):
-        x, _, offset, mask, _, stride, padding, dilation = self.get_fn_args(device, contiguous)
+        for batch_sz in [0, 33]:
+            self._test_forward_with_batchsize(device, contiguous, batch_sz)
+
+    def _test_forward_with_batchsize(self, device, contiguous, batch_sz):
+        x, _, offset, mask, _, stride, padding, dilation = self.get_fn_args(device, contiguous, batch_sz)
         in_channels = 6
         out_channels = 2
         kernel_size = (3, 2)
@@ -557,7 +560,11 @@ class DeformConvTester(OpTester, unittest.TestCase):
             res = layer(x, offset, wrong_mask)
 
     def _test_backward(self, device, contiguous):
-        x, weight, offset, mask, bias, stride, padding, dilation = self.get_fn_args(device, contiguous)
+        for batch_sz in [0, 33]:
+            self._test_backward_with_batchsize(device, contiguous, batch_sz)
+
+    def _test_backward_with_batchsize(self, device, contiguous, batch_sz):
+        x, weight, offset, mask, bias, stride, padding, dilation = self.get_fn_args(device, contiguous, batch_sz)
 
         def func(x_, offset_, mask_, weight_, bias_):
             return ops.deform_conv2d(x_, offset_, mask_,
