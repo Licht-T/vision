@@ -84,22 +84,6 @@ def deform_conv2d(
             "Got offset.shape[1]={}, while 2 * weight.size[2] * weight.size[3]={}".format(
                 offset.shape[1], 2 * weights_h * weights_w))
 
-    n_batches = offset.shape[0]
-    mask_ch = offset.shape[1] // 2
-    mask_h = offset.shape[2]
-    mask_w = offset.shape[3]
-
-    if use_mask and (
-            mask.shape[0] != n_batches
-            or mask.shape[1] != mask_ch
-            or mask.shape[2] != mask_h
-            or mask.shape[3] != mask_w
-    ):
-        raise RuntimeError(
-            "the shape of the mask tensor is not valid.\n"
-            "It must be {}.".format(
-                (n_batches, mask_ch, mask_h, mask_w)))
-
     return torch.ops.torchvision.deform_conv2d(
         input,
         weight,
