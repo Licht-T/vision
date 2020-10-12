@@ -12,6 +12,7 @@ from torchvision.extension import _assert_has_ops
 def deform_conv2d(
     input: Tensor,
     offset: Tensor,
+    mask: Optional[Tensor],
     weight: Tensor,
     bias: Optional[Tensor] = None,
     stride: Tuple[int, int] = (1, 1),
@@ -25,6 +26,9 @@ def deform_conv2d(
         input (Tensor[batch_size, in_channels, in_height, in_width]): input tensor
         offset (Tensor[batch_size, 2 * offset_groups * kernel_height * kernel_width,
             out_height, out_width]): offsets to be applied for each position in the
+            convolution kernel.
+        mask (Tensor[batch_size, offset_groups * kernel_height * kernel_width,
+            out_height, out_width]): masks to be applied for each position in the
             convolution kernel.
         weight (Tensor[out_channels, in_channels // groups, kernel_height, kernel_width]):
             convolution weights, split into groups of size (in_channels // groups)
@@ -42,11 +46,12 @@ def deform_conv2d(
         >>> input = torch.rand(4, 3, 10, 10)
         >>> kh, kw = 3, 3
         >>> weight = torch.rand(5, 3, kh, kw)
-        >>> # offset should have the same spatial size as the output
+        >>> # offset and mask should have the same spatial size as the output
         >>> # of the convolution. In this case, for an input of 10, stride of 1
         >>> # and kernel size of 3, without padding, the output size is 8
         >>> offset = torch.rand(4, 2 * kh * kw, 8, 8)
-        >>> out = deform_conv2d(input, offset, weight)
+        >>> mask = torch.rand(4, kh * kw, 8, 8)
+        >>> out = deform_conv2d(input, offset, mask, weight)
         >>> print(out.shape)
         >>> # returns
         >>>  torch.Size([4, 5, 8, 8])
@@ -54,6 +59,12 @@ def deform_conv2d(
 
     _assert_has_ops()
     out_channels = weight.shape[0]
+
+    use_mask = mask is not None
+
+    if mask is None:
+        mask = torch.zeros((input.shape[0], 0), device=input.device, dtype=input.dtype)
+
     if bias is None:
         bias = torch.zeros(out_channels, device=input.device, dtype=input.dtype)
 
@@ -77,18 +88,21 @@ def deform_conv2d(
         input,
         weight,
         offset,
+        mask,
         bias,
         stride_h, stride_w,
         pad_h, pad_w,
         dil_h, dil_w,
         n_weight_grps,
-        n_offset_grps)
+        n_offset_grps,
+        use_mask,)
 
 
 class DeformConv2d(nn.Module):
     """
     See deform_conv2d
     """
+
     def __init__(
         self,
         in_channels: int,
@@ -127,20 +141,24 @@ class DeformConv2d(nn.Module):
 
     def reset_parameters(self) -> None:
         init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+
         if self.bias is not None:
             fan_in, _ = init._calculate_fan_in_and_fan_out(self.weight)
             bound = 1 / math.sqrt(fan_in)
             init.uniform_(self.bias, -bound, bound)
 
-    def forward(self, input: Tensor, offset: Tensor) -> Tensor:
+    def forward(self, input: Tensor, offset: Tensor, mask: Tensor = None) -> Tensor:
         """
         Arguments:
             input (Tensor[batch_size, in_channels, in_height, in_width]): input tensor
             offset (Tensor[batch_size, 2 * offset_groups * kernel_height * kernel_width,
                 out_height, out_width]): offsets to be applied for each position in the
                 convolution kernel.
+            mask (Tensor[batch_size, offset_groups * kernel_height * kernel_width,
+                out_height, out_width]): masks to be applied for each position in the
+                convolution kernel.
         """
-        return deform_conv2d(input, offset, self.weight, self.bias, stride=self.stride,
+        return deform_conv2d(input, offset, mask, self.weight, self.bias, stride=self.stride,
                              padding=self.padding, dilation=self.dilation)
 
     def __repr__(self) -> str:

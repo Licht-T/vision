@@ -101,22 +101,27 @@ VISION_API at::Tensor DeformConv2d_forward_cuda(
     const at::Tensor& input,
     const at::Tensor& weight,
     const at::Tensor& offset,
+    const at::Tensor& mask,
     const at::Tensor& bias,
     std::pair<int, int> stride,
     std::pair<int, int> pad,
     std::pair<int, int> dilation,
     int groups,
-    int deformable_groups);
+    int deformable_groups,
+    bool use_mask);
 
-VISION_API std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor>
-DeformConv2d_backward_cuda(
-    const at::Tensor& grad_out,
-    const at::Tensor& input,
-    const at::Tensor& weight,
-    const at::Tensor& offset,
-    const at::Tensor& bias,
-    std::pair<int, int> stride,
-    std::pair<int, int> pad,
-    std::pair<int, int> dilation,
-    int groups,
-    int deformable_groups);
+VISION_API std::
+    tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor, at::Tensor>
+    DeformConv2d_backward_cuda(
+        const at::Tensor& grad_out,
+        const at::Tensor& input,
+        const at::Tensor& weight,
+        const at::Tensor& offset,
+        const at::Tensor& mask,
+        const at::Tensor& bias,
+        std::pair<int, int> stride,
+        std::pair<int, int> pad,
+        std::pair<int, int> dilation,
+        int groups,
+        int deformable_groups,
+        bool use_mask);
