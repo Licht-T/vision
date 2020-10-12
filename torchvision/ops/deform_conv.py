@@ -94,7 +94,8 @@ def deform_conv2d(
         pad_h, pad_w,
         dil_h, dil_w,
         n_weight_grps,
-        n_offset_grps)
+        n_offset_grps,
+        use_mask,)
 
 
 class DeformConv2d(nn.Module):
