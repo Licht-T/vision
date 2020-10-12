@@ -107,7 +107,8 @@ VISION_API at::Tensor DeformConv2d_forward_cpu(
     std::pair<int, int> pad,
     std::pair<int, int> dilation,
     int groups,
-    int deformable_groups);
+    int deformable_groups,
+    bool use_mask);
 
 VISION_API std::
     tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor, at::Tensor>
@@ -122,4 +123,5 @@ VISION_API std::
         std::pair<int, int> pad,
         std::pair<int, int> dilation,
         int groups,
-        int deformable_groups);
+        int deformable_groups,
+        bool use_mask);

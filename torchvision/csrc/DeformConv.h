@@ -19,7 +19,8 @@ at::Tensor DeformConv2d_forward(
     const std::pair<int, int>& padding,
     const std::pair<int, int>& dilation,
     const int groups,
-    const int offset_groups) {
+    const int offset_groups,
+    const bool use_mask) {
   if (input.is_cuda()) {
 #if defined(WITH_CUDA) || defined(WITH_HIP)
     return DeformConv2d_forward_cuda(
@@ -32,7 +33,8 @@ at::Tensor DeformConv2d_forward(
         padding,
         dilation,
         groups,
-        offset_groups);
+        offset_groups,
+        use_mask);
 #else
     AT_ERROR("Not compiled with GPU support");
 #endif
@@ -47,7 +49,8 @@ at::Tensor DeformConv2d_forward(
       padding,
       dilation,
       groups,
-      offset_groups);
+      offset_groups,
+      use_mask);
 }
 
 std::tuple<at::Tensor, at::Tensor, at::Tensor, at::Tensor, at::Tensor>
@@ -62,7 +65,8 @@ DeformConv2d_backward(
     const std::pair<int, int>& padding,
     const std::pair<int, int>& dilation,
     const int groups,
-    const int offset_groups) {
+    const int offset_groups,
+    const bool use_mask) {
   if (grad.is_cuda()) {
 #if defined(WITH_CUDA) || defined(WITH_HIP)
     return DeformConv2d_backward_cuda(
@@ -76,7 +80,8 @@ DeformConv2d_backward(
         padding,
         dilation,
         groups,
-        offset_groups);
+        offset_groups,
+        use_mask);
 #else
     AT_ERROR("Not compiled with GPU support");
 #endif
@@ -92,7 +97,8 @@ DeformConv2d_backward(
       padding,
       dilation,
       groups,
-      offset_groups);
+      offset_groups,
+      use_mask);
 }
 
 class DeformConv2dFunction
@@ -112,7 +118,8 @@ class DeformConv2dFunction
       int64_t dilation_h,
       int64_t dilation_w,
       int64_t groups,
-      int64_t offset_groups) {
+      int64_t offset_groups,
+      bool use_mask) {
     auto output = DeformConv2d_forward(
         input,
         weight,
@@ -123,7 +130,8 @@ class DeformConv2dFunction
         {pad_h, pad_w},
         {dilation_h, dilation_w},
         groups,
-        offset_groups);
+        offset_groups,
+        use_mask);
 
     ctx->save_for_backward({input, weight, offset, mask, bias});
     ctx->saved_data["stride_h"] = stride_h;
@@ -134,6 +142,7 @@ class DeformConv2dFunction
     ctx->saved_data["dilation_w"] = dilation_w;
     ctx->saved_data["groups"] = groups;
     ctx->saved_data["offset_groups"] = offset_groups;
+    ctx->saved_data["use_mask"] = use_mask;
 
     return {
         output,
@@ -158,6 +167,7 @@ class DeformConv2dFunction
     auto dilation_w = ctx->saved_data["dilation_w"].toInt();
     auto groups = ctx->saved_data["groups"].toInt();
     auto offset_groups = ctx->saved_data["offset_groups"].toInt();
+    auto use_mask = ctx->saved_data["use_mask"].toBool();
 
     auto grads = DeformConv2d_backward(
         grad_output[0],
@@ -170,7 +180,8 @@ class DeformConv2dFunction
         {pad_h, pad_w},
         {dilation_h, dilation_w},
         groups,
-        offset_groups);
+        offset_groups,
+        use_mask);
     auto grad_input = std::get<0>(grads);
     auto grad_weight = std::get<1>(grads);
     auto grad_offset = std::get<2>(grads);
@@ -183,6 +194,7 @@ class DeformConv2dFunction
         grad_offset,
         grad_mask,
         grad_bias,
+        torch::autograd::Variable(),
         torch::autograd::Variable(),
         torch::autograd::Variable(),
         torch::autograd::Variable(),
@@ -208,7 +220,8 @@ at::Tensor deform_conv2d(
     int64_t dilation_h,
     int64_t dilation_w,
     int64_t groups,
-    int64_t offset_groups) {
+    int64_t offset_groups,
+    bool use_mask) {
   auto result = DeformConv2dFunction::apply(
       input,
       weight,
@@ -222,6 +235,7 @@ at::Tensor deform_conv2d(
       dilation_h,
       dilation_w,
       groups,
-      offset_groups);
+      offset_groups,
+      use_mask);
   return result[0];
 }
