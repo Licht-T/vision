@@ -36,7 +36,7 @@ at::Tensor DeformConv2d_forward(
         offset_groups,
         use_mask);
 #else
-    AT_ERROR("Not compiled with GPU support");
+    TORCH_CHECK(false, "Not compiled with GPU support");
 #endif
   }
   return DeformConv2d_forward_cpu(
@@ -83,7 +83,7 @@ DeformConv2d_backward(
         offset_groups,
         use_mask);
 #else
-    AT_ERROR("Not compiled with GPU support");
+    TORCH_CHECK(false, "Not compiled with GPU support");
 #endif
   }
   return DeformConv2d_backward_cpu(
