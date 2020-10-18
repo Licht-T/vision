@@ -12,12 +12,12 @@ from torchvision.extension import _assert_has_ops
 def deform_conv2d(
     input: Tensor,
     offset: Tensor,
-    mask: Optional[Tensor],
     weight: Tensor,
     bias: Optional[Tensor] = None,
     stride: Tuple[int, int] = (1, 1),
     padding: Tuple[int, int] = (0, 0),
     dilation: Tuple[int, int] = (1, 1),
+    mask: Optional[Tensor] = None,
 ) -> Tensor:
     """
     Performs Deformable Convolution, described in Deformable Convolutional Networks
@@ -27,9 +27,6 @@ def deform_conv2d(
         offset (Tensor[batch_size, 2 * offset_groups * kernel_height * kernel_width,
             out_height, out_width]): offsets to be applied for each position in the
             convolution kernel.
-        mask (Tensor[batch_size, offset_groups * kernel_height * kernel_width,
-            out_height, out_width]): masks to be applied for each position in the
-            convolution kernel.
         weight (Tensor[out_channels, in_channels // groups, kernel_height, kernel_width]):
             convolution weights, split into groups of size (in_channels // groups)
         bias (Tensor[out_channels]): optional bias of shape (out_channels,). Default: None
@@ -37,6 +34,9 @@ def deform_conv2d(
         padding (int or Tuple[int, int]): height/width of padding of zeroes around
             each image. Default: 0
         dilation (int or Tuple[int, int]): the spacing between kernel elements. Default: 1
+        mask (Tensor[batch_size, offset_groups * kernel_height * kernel_width,
+            out_height, out_width]): masks to be applied for each position in the
+            convolution kernel.
 
     Returns:
         output (Tensor[batch_sz, out_channels, out_h, out_w]): result of convolution
@@ -51,7 +51,7 @@ def deform_conv2d(
         >>> # and kernel size of 3, without padding, the output size is 8
         >>> offset = torch.rand(4, 2 * kh * kw, 8, 8)
         >>> mask = torch.rand(4, kh * kw, 8, 8)
-        >>> out = deform_conv2d(input, offset, mask, weight)
+        >>> out = deform_conv2d(input, offset, weight, mask=mask)
         >>> print(out.shape)
         >>> # returns
         >>>  torch.Size([4, 5, 8, 8])
@@ -158,8 +158,8 @@ class DeformConv2d(nn.Module):
                 out_height, out_width]): masks to be applied for each position in the
                 convolution kernel.
         """
-        return deform_conv2d(input, offset, mask, self.weight, self.bias, stride=self.stride,
-                             padding=self.padding, dilation=self.dilation)
+        return deform_conv2d(input, offset, self.weight, self.bias, stride=self.stride,
+                             padding=self.padding, dilation=self.dilation, mask=mask)
 
     def __repr__(self) -> str:
         s = self.__class__.__name__ + '('
