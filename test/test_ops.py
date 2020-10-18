@@ -567,25 +567,22 @@ class DeformConvTester(OpTester, unittest.TestCase):
         x, weight, offset, mask, bias, stride, padding, dilation = self.get_fn_args(device, contiguous, batch_sz)
 
         def func(x_, offset_, mask_, weight_, bias_):
-            return ops.deform_conv2d(x_, offset_, mask_,
-                                     weight_, bias_, stride=stride,
-                                     padding=padding, dilation=dilation)
+            return ops.deform_conv2d(x_, offset_, weight_, bias_, stride=stride,
+                                     padding=padding, dilation=dilation, mask=mask_)
 
         gradcheck(func, (x, offset, mask, weight, bias), nondet_tol=1e-5)
 
         def func_no_mask(x_, offset_, weight_, bias_):
-            return ops.deform_conv2d(x_, offset_, None,
-                                     weight_, bias_, stride=stride,
-                                     padding=padding, dilation=dilation)
+            return ops.deform_conv2d(x_, offset_, weight_, bias_, stride=stride,
+                                     padding=padding, dilation=dilation, mask=None)
 
         gradcheck(func_no_mask, (x, offset, weight, bias), nondet_tol=1e-5)
 
         @torch.jit.script
         def script_func(x_, offset_, mask_, weight_, bias_, stride_, pad_, dilation_):
             # type:(Tensor, Tensor, Tensor, Tensor, Tensor, Tuple[int, int], Tuple[int, int], Tuple[int, int])->Tensor
-            return ops.deform_conv2d(x_, offset_, mask_,
-                                     weight_, bias_, stride=stride_,
-                                     padding=pad_, dilation=dilation_)
+            return ops.deform_conv2d(x_, offset_, weight_, bias_, stride=stride_,
+                                     padding=pad_, dilation=dilation_, mask=mask_)
 
         gradcheck(lambda z, off, msk, wei, bi: script_func(z, off, msk, wei, bi, stride, padding, dilation),
                   (x, offset, mask, weight, bias), nondet_tol=1e-5)
@@ -593,9 +590,8 @@ class DeformConvTester(OpTester, unittest.TestCase):
         @torch.jit.script
         def script_func_no_mask(x_, offset_, weight_, bias_, stride_, pad_, dilation_):
             # type:(Tensor, Tensor, Tensor, Tensor, Tuple[int, int], Tuple[int, int], Tuple[int, int])->Tensor
-            return ops.deform_conv2d(x_, offset_, None,
-                                     weight_, bias_, stride=stride_,
-                                     padding=pad_, dilation=dilation_)
+            return ops.deform_conv2d(x_, offset_, weight_, bias_, stride=stride_,
+                                     padding=pad_, dilation=dilation_, mask=None)
 
         gradcheck(lambda z, off, wei, bi: script_func_no_mask(z, off, wei, bi, stride, padding, dilation),
                   (x, offset, weight, bias), nondet_tol=1e-5)
@@ -621,7 +617,7 @@ class DeformConvTester(OpTester, unittest.TestCase):
 
             for d in ["cpu", "cuda"]:
 
-                out = ops.deform_conv2d(img.to(d), offset.to(d), mask.to(d), weight.to(d), padding=1)
+                out = ops.deform_conv2d(img.to(d), offset.to(d), weight.to(d), padding=1, mask=mask.to(d))
                 out.mean().backward()
                 if true_cpu_grads is None:
                     true_cpu_grads = init_weight.grad
