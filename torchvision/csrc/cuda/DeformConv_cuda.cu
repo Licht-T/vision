@@ -720,8 +720,12 @@ __global__ void deformable_col2im_coord_gpu_kernel(
 
       const int mask_idx = i * weight_w + j;
 
-      const scalar_t offset_h = offset_ptr[(((2 * mask_idx) * out_h + out_y) * out_w + out_x)];
-      const scalar_t offset_w = offset_ptr[(((2 * mask_idx + 1) * out_h + out_y) * out_w + out_x)];
+      const int offset_h_ptr =
+          (((2 * mask_idx) * out_h + out_y) * out_w + out_x);
+      const int offset_w_ptr =
+          (((2 * mask_idx + 1) * out_h + out_y) * out_w + out_x);
+      const scalar_t offset_h = offset_ptr[offset_h_ptr];
+      const scalar_t offset_w = offset_ptr[offset_w_ptr];
 
       scalar_t mask_value = 1;
       if (use_mask) {
