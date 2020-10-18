@@ -80,13 +80,19 @@
 
 using namespace at;
 
-const unsigned int CUDA_NUM_THREADS = 1024;
 const int kMaxParallelImgs = 32;
 
-inline unsigned int GET_BLOCKS(const unsigned int N) {
+inline unsigned int GET_THREADS() {
+  if (at::cuda::getCurrentDeviceProperties()->major >= 6) {
+    return 1024;
+  }
+  return 512;
+}
+
+inline unsigned int GET_BLOCKS(const unsigned int THREADS, const unsigned int N) {
   unsigned int kMaxGridNum =
       at::cuda::getCurrentDeviceProperties()->maxGridSize[0];
-  return std::min(kMaxGridNum, (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS);
+  return std::min(kMaxGridNum, (N + THREADS - 1) / THREADS);
 }
 
 template <typename scalar_t>
@@ -224,11 +230,14 @@ static void deformable_im2col(
     at::Tensor data_col) {
   int num_kernels = n_in_channels * out_h * out_w * parallel_imgs;
 
+  const unsigned int threads = GET_THREADS();
+  const unsigned int blocks = GET_BLOCKS(threads, num_kernels);
+
   AT_DISPATCH_FLOATING_TYPES_AND_HALF(
       input.scalar_type(), "deformable_im2col_gpu", ([&] {
         deformable_im2col_gpu_kernel<<<
-            GET_BLOCKS(num_kernels),
-            CUDA_NUM_THREADS>>>(
+            blocks,
+            threads>>>(
             num_kernels,
             input.data_ptr<scalar_t>(),
             data_offset.data_ptr<scalar_t>(),
@@ -585,11 +594,14 @@ static void compute_grad_input(
   int num_kernels =
       channels * weight_h * weight_w * out_h * out_w * parallel_imgs;
 
+  const unsigned int threads = GET_THREADS();
+  const unsigned int blocks = GET_BLOCKS(threads, num_kernels);
+
   AT_DISPATCH_FLOATING_TYPES_AND_HALF(
       columns.scalar_type(), "deformable_col2im_gpu", ([&] {
         deformable_col2im_gpu_kernel<<<
-            GET_BLOCKS(num_kernels),
-            CUDA_NUM_THREADS>>>(
+            blocks,
+            threads>>>(
             num_kernels,
             columns.data_ptr<scalar_t>(),
             offset.data_ptr<scalar_t>(),
@@ -790,11 +802,14 @@ static void compute_grad_offset_and_mask(
   int num_kernels =
       out_h * out_w * 2 * weight_h * weight_w * n_offset_grps * parallel_imgs;
 
+  const unsigned int threads = GET_THREADS();
+  const unsigned int blocks = GET_BLOCKS(threads, num_kernels);
+
   AT_DISPATCH_FLOATING_TYPES_AND_HALF(
       columns.scalar_type(), "deformable_col2im_coord_gpu", ([&] {
         deformable_col2im_coord_gpu_kernel<<<
-            GET_BLOCKS(num_kernels),
-            CUDA_NUM_THREADS>>>(
+            blocks,
+            threads>>>(
             num_kernels,
             columns.data_ptr<scalar_t>(),
             input.data_ptr<scalar_t>(),
